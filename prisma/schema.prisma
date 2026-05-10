@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String
+  password  String
+  role      String   // "DRIVER" | "BUSINESS"
+  pushToken String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driverProfile   DriverProfile?
+  businessProfile BusinessProfile?
+
+  postedJobs Job[] @relation("BusinessJobs")
+  driverJobs Job[] @relation("DriverJobs")
+
+  ratingsGiven    Rating[] @relation("RaterRatings")
+  ratingsReceived Rating[] @relation("RatedRatings")
+}
+
+model DriverProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id])
+  vanType           String   @default("Large Van")
+  vanRegistration   String?
+  vanYear           String?
+  licenceVerified   Boolean  @default(false)
+  insuranceVerified Boolean  @default(false)
+  gitVerified       Boolean  @default(false)
+  isOnline          Boolean  @default(false)
+  isApproved        Boolean  @default(false)
+  averageRating     Float    @default(0)
+  totalJobs         Int      @default(0)
+  totalEarnings     Float    @default(0)
+  availableBalance  Float    @default(0)
+  createdAt         DateTime @default(now())
+}
+
+model BusinessProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id])
+  businessName  String
+  isVerified    Boolean  @default(false)
+  averageRating Float    @default(0)
+  totalJobs     Int      @default(0)
+  totalSpend    Float    @default(0)
+  createdAt     DateTime @default(now())
+}
+
+model Job {
+  id             String    @id @default(cuid())
+  businessId     String
+  business       User      @relation("BusinessJobs", fields: [businessId], references: [id])
+  driverId       String?
+  driver         User?     @relation("DriverJobs", fields: [driverId], references: [id])
+  pickupAddress  String
+  pickupContact  String
+  dropoffAddress String
+  dropoffContact String
+  loadDescription String
+  vanSize        String    @default("Any Van")
+  notes          String?
+  urgency        String    @default("ASAP")
+  scheduledAt    DateTime?
+  status         String    @default("POSTED")
+  totalPrice     Float     @default(0)
+  platformFee    Float     @default(0)
+  driverEarnings Float     @default(0)
+  podPhotoUrl    String?
+  podSignature   String?
+  deliveredAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  ratings Rating[]
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id])
+  raterId   String
+  rater     User     @relation("RaterRatings", fields: [raterId], references: [id])
+  ratedId   String
+  rated     User     @relation("RatedRatings", fields: [ratedId], references: [id])
+  score     Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@unique([jobId, raterId])
+}
