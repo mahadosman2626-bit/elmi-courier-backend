@@ -37,7 +37,7 @@ async function register(req, res) {
       phone,
       password: hashedPassword,
       role,
-      driverProfile: role === 'DRIVER' ? { create: {} } : undefined,
+      driverProfile: role === 'DRIVER' ? { create: { isApproved: true } } : undefined,
       businessProfile:
         role === 'BUSINESS'
           ? { create: { businessName: businessName || name } }

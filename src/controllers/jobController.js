@@ -48,6 +48,7 @@ async function getJob(req, res) {
     include: {
       business: { select: { id: true, name: true, businessProfile: { select: { businessName: true, averageRating: true } } } },
       driver: { select: { id: true, name: true, driverProfile: { select: { vanType: true, averageRating: true, totalJobs: true } } } },
+      ratings: { select: { raterId: true } },
     },
   });
 
@@ -284,37 +285,48 @@ async function rateJob(req, res) {
     return res.status(400).json({ error: 'Score must be between 1 and 5' });
   }
 
-  const job = await prisma.job.findUnique({ where: { id: req.params.id } });
+  try {
+    const job = await prisma.job.findUnique({ where: { id: req.params.id } });
 
-  if (!job) return res.status(404).json({ error: 'Job not found' });
-  if (job.status !== 'DELIVERED') return res.status(400).json({ error: 'Can only rate completed jobs' });
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (job.status !== 'DELIVERED') return res.status(400).json({ error: 'Can only rate completed jobs' });
 
-  // Driver rates the business, business rates the driver
-  const ratedId = role === 'DRIVER' ? job.businessId : job.driverId;
+    // Driver rates the business, business rates the driver
+    const ratedId = role === 'DRIVER' ? job.businessId : job.driverId;
 
-  if (!ratedId) return res.status(400).json({ error: 'No one to rate' });
+    if (!ratedId) return res.status(400).json({ error: 'No one to rate' });
 
-  const rating = await prisma.rating.create({
-    data: { jobId: job.id, raterId, ratedId, score, comment },
-  });
-
-  // Recalculate the rated user's average
-  const allRatings = await prisma.rating.findMany({ where: { ratedId } });
-  const avg = allRatings.reduce((sum, r) => sum + r.score, 0) / allRatings.length;
-
-  if (role === 'DRIVER') {
-    await prisma.businessProfile.update({
-      where: { userId: ratedId },
-      data: { averageRating: Math.round(avg * 10) / 10 },
+    const rating = await prisma.rating.create({
+      data: { jobId: job.id, raterId, ratedId, score: Number(score), comment },
     });
-  } else {
-    await prisma.driverProfile.update({
-      where: { userId: ratedId },
-      data: { averageRating: Math.round(avg * 10) / 10 },
-    });
+
+    // Recalculate the rated user's average
+    const allRatings = await prisma.rating.findMany({ where: { ratedId } });
+    const avg = allRatings.reduce((sum, r) => sum + r.score, 0) / allRatings.length;
+
+    if (role === 'DRIVER') {
+      await prisma.businessProfile.update({
+        where: { userId: ratedId },
+        data: { averageRating: Math.round(avg * 10) / 10 },
+      });
+    } else {
+      await prisma.driverProfile.update({
+        where: { userId: ratedId },
+        data: { averageRating: Math.round(avg * 10) / 10 },
+      });
+    }
+
+    return res.status(201).json(rating);
+  } catch (err) {
+    console.error('rateJob error:', err);
+    if (err.code === 'P2002') {
+      return res.status(409).json({ error: 'You have already rated this job.' });
+    }
+    if (err.code === 'P2021') {
+      return res.status(500).json({ error: 'Rating table not found. Run: npx prisma db push' });
+    }
+    return res.status(500).json({ error: err.message || 'Failed to submit rating.' });
   }
-
-  return res.status(201).json(rating);
 }
 
 module.exports = {
