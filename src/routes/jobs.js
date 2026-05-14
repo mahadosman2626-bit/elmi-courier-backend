@@ -11,6 +11,7 @@ const {
   deliverJob,
   cancelJob,
   rateJob,
+  recentDrivers,
 } = require('../controllers/jobController');
 
 // Drivers see the open job board
@@ -18,6 +19,9 @@ router.get('/', requireAuth, requireRole('DRIVER'), listAvailableJobs);
 
 // Both roles see their own jobs
 router.get('/my', requireAuth, myJobs);
+
+// Business: unique drivers from completed jobs
+router.get('/recent-drivers', requireAuth, requireRole('BUSINESS'), recentDrivers);
 
 // Single job — both roles
 router.get('/:id', requireAuth, getJob);

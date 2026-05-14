@@ -328,6 +328,36 @@ async function rateJob(req, res) {
   }
 }
 
+// GET /api/jobs/recent-drivers — unique drivers who completed jobs for this business
+async function recentDrivers(req, res) {
+  const jobs = await prisma.job.findMany({
+    where: { businessId: req.user.id, status: 'DELIVERED', driverId: { not: null } },
+    select: {
+      driverId: true,
+      driver: {
+        select: {
+          id: true,
+          name: true,
+          driverProfile: { select: { vanType: true, averageRating: true, totalJobs: true } },
+        },
+      },
+    },
+    orderBy: { deliveredAt: 'desc' },
+  });
+
+  // Deduplicate by driverId, keep most recent
+  const seen = new Set();
+  const drivers = [];
+  for (const job of jobs) {
+    if (job.driver && !seen.has(job.driverId)) {
+      seen.add(job.driverId);
+      drivers.push(job.driver);
+    }
+  }
+
+  return res.json(drivers);
+}
+
 module.exports = {
   listAvailableJobs,
   myJobs,
@@ -339,4 +369,5 @@ module.exports = {
   deliverJob,
   cancelJob,
   rateJob,
+  recentDrivers,
 };
