@@ -169,4 +169,26 @@ async function updateBusiness(req, res) {
   return res.json(profile);
 }
 
-module.exports = { register, login, me, savePushToken, updateProfile, updateBusiness };
+async function changePassword(req, res) {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current and new password are required' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters' });
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  const valid = await bcrypt.compare(currentPassword, user.password);
+  if (!valid) {
+    return res.status(401).json({ error: 'Current password is incorrect' });
+  }
+
+  const hashed = await bcrypt.hash(newPassword, 12);
+  await prisma.user.update({ where: { id: req.user.id }, data: { password: hashed } });
+
+  return res.json({ ok: true });
+}
+
+module.exports = { register, login, me, savePushToken, updateProfile, updateBusiness, changePassword };
