@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const { calculateFees } = require('../utils/pricing');
 const { sendPushNotification } = require('../utils/notifications');
+const { saveNotification } = require('./notificationController');
 
 const prisma = new PrismaClient();
 
@@ -103,24 +104,27 @@ async function createJob(req, res) {
     },
   });
 
-  // Notify all online approved drivers
-  const onlineDrivers = await prisma.user.findMany({
-    where: {
-      role: 'DRIVER',
-      pushToken: { not: null },
-      driverProfile: { isOnline: true },
-    },
-    select: { pushToken: true },
-  });
-  const driverTokens = onlineDrivers.map((d) => d.pushToken).filter(Boolean);
   const pickup = pickupAddress.split(',')[0];
   const dropoff = dropoffAddress.split(',')[0];
+
+  // Notify all online drivers via push + save to their history
+  const onlineDrivers = await prisma.user.findMany({
+    where: { role: 'DRIVER', driverProfile: { isOnline: true } },
+    select: { id: true, pushToken: true },
+  });
+  const driverTokens = onlineDrivers.map((d) => d.pushToken).filter(Boolean);
   sendPushNotification(
     driverTokens,
     'New job available! 🚐',
     `${pickup} → ${dropoff} · £${driverEarnings.toFixed(0)}`,
     { jobId: job.id }
   );
+  for (const d of onlineDrivers) {
+    saveNotification(d.id, 'New Job Available', `${pickup} → ${dropoff} · £${driverEarnings.toFixed(0)}`, 'JOB_POSTED', job.id);
+  }
+
+  // Save to business history
+  saveNotification(req.user.id, 'Job Posted', `Your job from ${pickup} to ${dropoff} is now live`, 'JOB_POSTED', job.id);
 
   return res.status(201).json(job);
 }
@@ -143,13 +147,10 @@ async function acceptJob(req, res) {
     prisma.user.findUnique({ where: { id: req.user.id }, select: { name: true } }),
   ]);
   if (business?.pushToken) {
-    sendPushNotification(
-      business.pushToken,
-      'Driver on the way! 🚐',
-      `${driver.name} has accepted your job`,
-      { jobId: req.params.id }
-    );
+    sendPushNotification(business.pushToken, 'Driver on the way! 🚐', `${driver.name} has accepted your job`, { jobId: req.params.id });
   }
+  saveNotification(job.businessId, 'Driver on the Way', `${driver.name} accepted your job`, 'JOB_ACCEPTED', req.params.id);
+  saveNotification(req.user.id, 'Job Accepted', `You accepted: ${job.pickupAddress.split(',')[0]} → ${job.dropoffAddress.split(',')[0]}`, 'JOB_ACCEPTED', req.params.id);
 
   return res.json(updated);
 }
@@ -171,13 +172,10 @@ async function markCollecting(req, res) {
   const business = await prisma.user.findUnique({ where: { id: job.businessId }, select: { pushToken: true } });
   const driver = await prisma.user.findUnique({ where: { id: req.user.id }, select: { name: true } });
   if (business?.pushToken) {
-    sendPushNotification(
-      business.pushToken,
-      'Driver at pickup 📍',
-      `${driver.name} has arrived and is collecting the items`,
-      { jobId: req.params.id }
-    );
+    sendPushNotification(business.pushToken, 'Driver at Pickup 📍', `${driver.name} has arrived and is collecting the items`, { jobId: req.params.id });
   }
+  saveNotification(job.businessId, 'Driver at Pickup', `${driver.name} has arrived at the pickup address`, 'COLLECTING', req.params.id);
+  saveNotification(req.user.id, 'Arrived at Pickup', `You are collecting: ${job.pickupAddress.split(',')[0]}`, 'COLLECTING', req.params.id);
 
   return res.json(updated);
 }
@@ -198,13 +196,10 @@ async function markInTransit(req, res) {
   // Notify business
   const business = await prisma.user.findUnique({ where: { id: job.businessId }, select: { pushToken: true } });
   if (business?.pushToken) {
-    sendPushNotification(
-      business.pushToken,
-      'Out for delivery 🚚',
-      `Your items have been collected and are on the way`,
-      { jobId: req.params.id }
-    );
+    sendPushNotification(business.pushToken, 'Out for Delivery 🚚', 'Your items have been collected and are on the way', { jobId: req.params.id });
   }
+  saveNotification(job.businessId, 'Out for Delivery', 'Items collected and heading to the drop-off', 'IN_TRANSIT', req.params.id);
+  saveNotification(req.user.id, 'In Transit', `Heading to: ${job.dropoffAddress.split(',')[0]}`, 'IN_TRANSIT', req.params.id);
 
   return res.json(updated);
 }
@@ -244,13 +239,10 @@ async function deliverJob(req, res) {
   // Notify business
   const business = await prisma.user.findUnique({ where: { id: job.businessId }, select: { pushToken: true } });
   if (business?.pushToken) {
-    sendPushNotification(
-      business.pushToken,
-      'Delivered! 🎉',
-      `Your job has been completed. Rate your driver in the app`,
-      { jobId: req.params.id }
-    );
+    sendPushNotification(business.pushToken, 'Delivered! 🎉', 'Your job has been completed. Rate your driver in the app', { jobId: req.params.id });
   }
+  saveNotification(job.businessId, 'Delivered!', `Your delivery from ${job.pickupAddress.split(',')[0]} to ${job.dropoffAddress.split(',')[0]} is complete`, 'DELIVERED', req.params.id);
+  saveNotification(req.user.id, 'Job Completed', `Delivered to ${job.dropoffAddress.split(',')[0]} · £${job.driverEarnings.toFixed(2)} earned`, 'DELIVERED', req.params.id);
 
   return res.json(updated);
 }
@@ -272,6 +264,13 @@ async function cancelJob(req, res) {
     where: { id: req.params.id },
     data: { status: 'CANCELLED' },
   });
+
+  const pickup = job.pickupAddress.split(',')[0];
+  const dropoff = job.dropoffAddress.split(',')[0];
+  saveNotification(job.businessId, 'Job Cancelled', `Job from ${pickup} to ${dropoff} was cancelled`, 'CANCELLED', req.params.id);
+  if (job.driverId && job.driverId !== req.user.id) {
+    saveNotification(job.driverId, 'Job Cancelled', `A job you were assigned (${pickup} → ${dropoff}) has been cancelled`, 'CANCELLED', req.params.id);
+  }
 
   return res.json(updated);
 }

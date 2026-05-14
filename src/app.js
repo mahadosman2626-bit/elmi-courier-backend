@@ -2,9 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
-const authRoutes   = require('./routes/auth');
-const jobRoutes    = require('./routes/jobs');
-const driverRoutes = require('./routes/driver');
+const authRoutes          = require('./routes/auth');
+const jobRoutes           = require('./routes/jobs');
+const driverRoutes        = require('./routes/driver');
+const notificationRoutes  = require('./routes/notifications');
 
 const app = express();
 
@@ -17,9 +18,10 @@ app.get('/health', (req, res) => {
 });
 
 // Routes
-app.use('/api/auth',   authRoutes);
-app.use('/api/jobs',   jobRoutes);
-app.use('/api/driver', driverRoutes);
+app.use('/api/auth',          authRoutes);
+app.use('/api/jobs',          jobRoutes);
+app.use('/api/driver',        driverRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404
 app.use((req, res) => {
