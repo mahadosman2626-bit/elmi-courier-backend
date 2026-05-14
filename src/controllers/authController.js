@@ -169,6 +169,35 @@ async function updateBusiness(req, res) {
   return res.json(profile);
 }
 
+async function uploadBusinessDocuments(req, res) {
+  const { businessRegPhotoUrl, addressProofPhotoUrl } = req.body;
+
+  const data = { documentsSubmittedAt: new Date() };
+  if (businessRegPhotoUrl) data.businessRegPhotoUrl = businessRegPhotoUrl;
+  if (addressProofPhotoUrl) data.addressProofPhotoUrl = addressProofPhotoUrl;
+
+  const profile = await prisma.businessProfile.update({
+    where: { userId: req.user.id },
+    data,
+  });
+
+  // Notify all admins
+  const admins = await prisma.user.findMany({
+    where: { role: 'ADMIN', pushToken: { not: null } },
+    select: { pushToken: true },
+  });
+  const { sendPushNotification } = require('../utils/notifications');
+  const business = await prisma.user.findUnique({ where: { id: req.user.id }, select: { name: true } });
+  sendPushNotification(
+    admins.map((a) => a.pushToken),
+    'Business Docs Submitted 📋',
+    `${business.name} has submitted documents for review`,
+    { businessId: req.user.id }
+  );
+
+  return res.json(profile);
+}
+
 async function changePassword(req, res) {
   const { currentPassword, newPassword } = req.body;
 
@@ -191,4 +220,4 @@ async function changePassword(req, res) {
   return res.json({ ok: true });
 }
 
-module.exports = { register, login, me, savePushToken, updateProfile, updateBusiness, changePassword };
+module.exports = { register, login, me, savePushToken, updateProfile, updateBusiness, uploadBusinessDocuments, changePassword };

@@ -66,15 +66,18 @@ model DriverProfile {
 }
 
 model BusinessProfile {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  user          User     @relation(fields: [userId], references: [id])
-  businessName  String
-  isVerified    Boolean  @default(false)
-  averageRating Float    @default(0)
-  totalJobs     Int      @default(0)
-  totalSpend    Float    @default(0)
-  createdAt     DateTime @default(now())
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id])
+  businessName         String
+  isVerified           Boolean   @default(false)
+  averageRating        Float     @default(0)
+  totalJobs            Int       @default(0)
+  totalSpend           Float     @default(0)
+  businessRegPhotoUrl  String?
+  addressProofPhotoUrl String?
+  documentsSubmittedAt DateTime?
+  createdAt            DateTime  @default(now())
 }
 
 model Job {

@@ -73,4 +73,59 @@ async function verifyDriver(req, res) {
   return res.json(profile);
 }
 
-module.exports = { listDrivers, verifyDriver };
+async function listBusinesses(req, res) {
+  const businesses = await prisma.user.findMany({
+    where: { role: 'BUSINESS' },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      createdAt: true,
+      businessProfile: {
+        select: {
+          businessName: true,
+          isVerified: true,
+          businessRegPhotoUrl: true,
+          addressProofPhotoUrl: true,
+          documentsSubmittedAt: true,
+          totalJobs: true,
+          averageRating: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return res.json(businesses);
+}
+
+async function verifyBusiness(req, res) {
+  const { userId } = req.params;
+  const { isVerified } = req.body;
+
+  const profile = await prisma.businessProfile.update({
+    where: { userId },
+    data: { isVerified },
+  });
+
+  const business = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { pushToken: true },
+  });
+
+  if (business?.pushToken) {
+    sendPushNotification(
+      business.pushToken,
+      isVerified ? 'Business Verified ✅' : 'Verification Update',
+      isVerified
+        ? 'Your business has been verified. You can now post jobs!'
+        : 'Your business verification was not approved. Please resubmit your documents.',
+      {}
+    );
+  }
+
+  return res.json(profile);
+}
+
+module.exports = { listDrivers, verifyDriver, listBusinesses, verifyBusiness };
