@@ -96,6 +96,37 @@ async function withdraw(req, res) {
   });
 }
 
+// PATCH /api/driver/documents — submit document photos
+async function uploadDocuments(req, res) {
+  const { licencePhotoUrl, insurancePhotoUrl, gitPhotoUrl } = req.body;
+
+  const data = { documentsSubmittedAt: new Date() };
+  if (licencePhotoUrl) data.licencePhotoUrl = licencePhotoUrl;
+  if (insurancePhotoUrl) data.insurancePhotoUrl = insurancePhotoUrl;
+  if (gitPhotoUrl) data.gitPhotoUrl = gitPhotoUrl;
+
+  const profile = await prisma.driverProfile.update({
+    where: { userId: req.user.id },
+    data,
+  });
+
+  // Notify all admins
+  const admins = await prisma.user.findMany({
+    where: { role: 'ADMIN', pushToken: { not: null } },
+    select: { pushToken: true },
+  });
+  const { sendPushNotification } = require('../utils/notifications');
+  const driver = await prisma.user.findUnique({ where: { id: req.user.id }, select: { name: true } });
+  sendPushNotification(
+    admins.map((a) => a.pushToken),
+    'Documents Submitted 📋',
+    `${driver.name} has submitted documents for review`,
+    { driverId: req.user.id }
+  );
+
+  return res.json(profile);
+}
+
 // PATCH /api/driver/profile — update van details
 async function updateProfile(req, res) {
   const { vanType, vanRegistration, vanYear } = req.body;
@@ -112,4 +143,4 @@ async function updateProfile(req, res) {
   return res.json(profile);
 }
 
-module.exports = { toggleStatus, earnings, withdraw, updateProfile };
+module.exports = { toggleStatus, earnings, withdraw, updateProfile, uploadDocuments };

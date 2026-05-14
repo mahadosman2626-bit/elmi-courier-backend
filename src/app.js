@@ -6,6 +6,7 @@ const authRoutes          = require('./routes/auth');
 const jobRoutes           = require('./routes/jobs');
 const driverRoutes        = require('./routes/driver');
 const notificationRoutes  = require('./routes/notifications');
+const adminRoutes         = require('./routes/admin');
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/auth',          authRoutes);
 app.use('/api/jobs',          jobRoutes);
 app.use('/api/driver',        driverRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin',         adminRoutes);
 
 // 404
 app.use((req, res) => {
