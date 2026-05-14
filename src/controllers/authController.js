@@ -133,4 +133,40 @@ async function savePushToken(req, res) {
   return res.json({ ok: true });
 }
 
-module.exports = { register, login, me, savePushToken };
+async function updateProfile(req, res) {
+  const { name, phone } = req.body;
+
+  const user = await prisma.user.update({
+    where: { id: req.user.id },
+    data: {
+      name: name || undefined,
+      phone: phone || undefined,
+    },
+    include: { driverProfile: true, businessProfile: true },
+  });
+
+  return res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    role: user.role,
+    driverProfile: user.driverProfile,
+    businessProfile: user.businessProfile,
+  });
+}
+
+async function updateBusiness(req, res) {
+  const { businessName } = req.body;
+
+  if (!businessName) return res.status(400).json({ error: 'businessName is required' });
+
+  const profile = await prisma.businessProfile.update({
+    where: { userId: req.user.id },
+    data: { businessName },
+  });
+
+  return res.json(profile);
+}
+
+module.exports = { register, login, me, savePushToken, updateProfile, updateBusiness };
