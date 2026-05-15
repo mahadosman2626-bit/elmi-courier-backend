@@ -203,11 +203,10 @@ async function driverWithdraw(req, res) {
 
   const amountInPence = Math.round(profile.availableBalance * 100);
 
-  await stripe.transfers.create({
-    amount: amountInPence,
-    currency: 'gbp',
-    destination: profile.stripeAccountId,
-  });
+  await stripe.payouts.create(
+    { amount: amountInPence, currency: 'gbp', method: 'standard' },
+    { stripeAccount: profile.stripeAccountId }
+  );
 
   const withdrawn = profile.availableBalance;
   await prisma.driverProfile.update({

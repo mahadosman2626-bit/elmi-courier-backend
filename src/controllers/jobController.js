@@ -1,9 +1,11 @@
 const { PrismaClient } = require('@prisma/client');
+const Stripe = require('stripe');
 const { calculateFees } = require('../utils/pricing');
 const { sendPushNotification } = require('../utils/notifications');
 const { saveNotification } = require('./notificationController');
 
 const prisma = new PrismaClient();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // GET /api/jobs — drivers see all POSTED jobs
 async function listAvailableJobs(req, res) {
@@ -229,7 +231,7 @@ async function deliverJob(req, res) {
   });
 
   // Credit driver earnings and increment stats
-  await prisma.driverProfile.update({
+  const driverProfile = await prisma.driverProfile.update({
     where: { userId: req.user.id },
     data: {
       totalJobs: { increment: 1 },
@@ -237,6 +239,20 @@ async function deliverJob(req, res) {
       availableBalance: { increment: job.driverEarnings },
     },
   });
+
+  // Transfer driver's cut from platform Stripe balance to their connected account
+  if (driverProfile.stripeAccountId) {
+    try {
+      await stripe.transfers.create({
+        amount: Math.round(job.driverEarnings * 100),
+        currency: 'gbp',
+        destination: driverProfile.stripeAccountId,
+        transfer_group: job.id,
+      });
+    } catch (err) {
+      console.error(`Stripe transfer failed for job ${job.id}:`, err.message);
+    }
+  }
 
   // Notify business
   const business = await prisma.user.findUnique({ where: { id: job.businessId }, select: { pushToken: true } });
