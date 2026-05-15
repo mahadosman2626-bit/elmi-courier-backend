@@ -143,6 +143,11 @@ async function driverOnboard(req, res) {
       country: 'GB',
       email: user.email,
       business_type: 'individual',
+      business_profile: {
+        mcc: '4215',
+        url: 'https://elmi-courier-backend-production.up.railway.app',
+        product_description: 'Delivery driver on the Elmi Courier platform',
+      },
       capabilities: { transfers: { requested: true } },
     });
     accountId = account.id;
