@@ -142,6 +142,7 @@ async function driverOnboard(req, res) {
       type: 'express',
       country: 'GB',
       email: user.email,
+      business_type: 'individual',
       capabilities: { transfers: { requested: true } },
     });
     accountId = account.id;
