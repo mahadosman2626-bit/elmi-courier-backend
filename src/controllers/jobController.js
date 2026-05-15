@@ -14,7 +14,7 @@ async function listAvailableJobs(req, res) {
         select: {
           id: true,
           name: true,
-          businessProfile: { select: { businessName: true, averageRating: true } },
+          businessProfile: { select: { businessName: true, averageRating: true, profilePhotoUrl: true } },
         },
       },
     },
@@ -33,8 +33,8 @@ async function myJobs(req, res) {
   const jobs = await prisma.job.findMany({
     where,
     include: {
-      business: { select: { id: true, name: true, businessProfile: { select: { businessName: true } } } },
-      driver: { select: { id: true, name: true, driverProfile: { select: { vanType: true, averageRating: true } } } },
+      business: { select: { id: true, name: true, businessProfile: { select: { businessName: true, profilePhotoUrl: true } } } },
+      driver: { select: { id: true, name: true, driverProfile: { select: { vanType: true, averageRating: true, profilePhotoUrl: true } } } },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -47,8 +47,8 @@ async function getJob(req, res) {
   const job = await prisma.job.findUnique({
     where: { id: req.params.id },
     include: {
-      business: { select: { id: true, name: true, businessProfile: { select: { businessName: true, averageRating: true } } } },
-      driver: { select: { id: true, name: true, driverProfile: { select: { vanType: true, averageRating: true, totalJobs: true } } } },
+      business: { select: { id: true, name: true, businessProfile: { select: { businessName: true, averageRating: true, profilePhotoUrl: true } } } },
+      driver: { select: { id: true, name: true, driverProfile: { select: { vanType: true, averageRating: true, totalJobs: true, profilePhotoUrl: true } } } },
       ratings: { select: { raterId: true } },
     },
   });
@@ -338,7 +338,7 @@ async function recentDrivers(req, res) {
         select: {
           id: true,
           name: true,
-          driverProfile: { select: { vanType: true, averageRating: true, totalJobs: true } },
+          driverProfile: { select: { vanType: true, averageRating: true, totalJobs: true, profilePhotoUrl: true } },
         },
       },
     },
