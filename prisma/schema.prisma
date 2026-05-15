@@ -101,6 +101,8 @@ model Job {
   totalPrice     Float     @default(0)
   platformFee    Float     @default(0)
   driverEarnings Float     @default(0)
+  loadDocumentUrl      String?
+  completedDocumentUrl String?
   podPhotoUrl    String?
   podSignature   String?
   deliveredAt    DateTime?

@@ -70,6 +70,7 @@ async function createJob(req, res) {
     notes,
     urgency,
     totalPrice,
+    loadDocumentUrl,
   } = req.body;
 
   if (!pickupAddress || !dropoffAddress || !loadDescription || !totalPrice) {
@@ -92,6 +93,7 @@ async function createJob(req, res) {
       totalPrice: Number(totalPrice),
       platformFee,
       driverEarnings,
+      loadDocumentUrl: loadDocumentUrl || null,
     },
   });
 
@@ -358,6 +360,24 @@ async function recentDrivers(req, res) {
   return res.json(drivers);
 }
 
+// PATCH /api/jobs/:id/completed-document — driver uploads completed paperwork
+async function uploadCompletedDocument(req, res) {
+  const { completedDocumentUrl } = req.body;
+  if (!completedDocumentUrl) return res.status(400).json({ error: 'completedDocumentUrl required' });
+
+  const job = await prisma.job.findUnique({ where: { id: req.params.id }, select: { driverId: true, status: true } });
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  if (job.driverId !== req.user.id) return res.status(403).json({ error: 'Not your job' });
+  if (job.status !== 'DELIVERED') return res.status(400).json({ error: 'Job must be delivered first' });
+
+  const updated = await prisma.job.update({
+    where: { id: req.params.id },
+    data: { completedDocumentUrl },
+  });
+
+  return res.json(updated);
+}
+
 // PATCH /api/jobs/:id/location — driver pushes GPS coordinates
 async function updateLocation(req, res) {
   const { lat, lng } = req.body;
@@ -389,4 +409,5 @@ module.exports = {
   rateJob,
   recentDrivers,
   updateLocation,
+  uploadCompletedDocument,
 };
