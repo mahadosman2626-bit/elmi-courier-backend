@@ -104,6 +104,9 @@ model Job {
   podPhotoUrl    String?
   podSignature   String?
   deliveredAt    DateTime?
+  driverLat      Float?
+  driverLng      Float?
+  locationUpdatedAt DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

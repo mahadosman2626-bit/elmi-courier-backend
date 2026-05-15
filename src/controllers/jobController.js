@@ -358,6 +358,24 @@ async function recentDrivers(req, res) {
   return res.json(drivers);
 }
 
+// PATCH /api/jobs/:id/location — driver pushes GPS coordinates
+async function updateLocation(req, res) {
+  const { lat, lng } = req.body;
+  if (lat == null || lng == null) return res.status(400).json({ error: 'lat and lng required' });
+
+  const job = await prisma.job.findUnique({ where: { id: req.params.id }, select: { driverId: true, status: true } });
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  if (job.driverId !== req.user.id) return res.status(403).json({ error: 'Not your job' });
+  if (!['COLLECTING', 'IN_TRANSIT'].includes(job.status)) return res.status(400).json({ error: 'Job not in progress' });
+
+  await prisma.job.update({
+    where: { id: req.params.id },
+    data: { driverLat: lat, driverLng: lng, locationUpdatedAt: new Date() },
+  });
+
+  return res.json({ ok: true });
+}
+
 module.exports = {
   listAvailableJobs,
   myJobs,
@@ -370,4 +388,5 @@ module.exports = {
   cancelJob,
   rateJob,
   recentDrivers,
+  updateLocation,
 };

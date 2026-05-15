@@ -12,6 +12,7 @@ const {
   cancelJob,
   rateJob,
   recentDrivers,
+  updateLocation,
 } = require('../controllers/jobController');
 
 // Drivers see the open job board
@@ -34,6 +35,7 @@ router.post('/:id/accept',     requireAuth, requireRole('DRIVER'), acceptJob);
 router.post('/:id/collecting', requireAuth, requireRole('DRIVER'), markCollecting);
 router.post('/:id/transit',    requireAuth, requireRole('DRIVER'), markInTransit);
 router.post('/:id/deliver',    requireAuth, requireRole('DRIVER'), deliverJob);
+router.patch('/:id/location',  requireAuth, requireRole('DRIVER'), updateLocation);
 
 // Either party can cancel
 router.post('/:id/cancel', requireAuth, cancelJob);
