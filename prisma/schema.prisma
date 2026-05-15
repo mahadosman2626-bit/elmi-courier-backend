@@ -49,6 +49,7 @@ model DriverProfile {
   vanType           String   @default("Large Van")
   vanRegistration   String?
   vanYear           String?
+  profilePhotoUrl   String?
   licenceVerified   Boolean  @default(false)
   insuranceVerified Boolean  @default(false)
   gitVerified       Boolean  @default(false)

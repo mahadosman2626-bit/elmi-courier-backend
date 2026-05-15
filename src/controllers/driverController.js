@@ -143,4 +143,17 @@ async function updateProfile(req, res) {
   return res.json(profile);
 }
 
-module.exports = { toggleStatus, earnings, withdraw, updateProfile, uploadDocuments };
+// PATCH /api/driver/photo — update profile photo
+async function updateProfilePhoto(req, res) {
+  const { profilePhotoUrl } = req.body;
+  if (!profilePhotoUrl) return res.status(400).json({ error: 'profilePhotoUrl required' });
+
+  const profile = await prisma.driverProfile.update({
+    where: { userId: req.user.id },
+    data: { profilePhotoUrl },
+  });
+
+  return res.json(profile);
+}
+
+module.exports = { toggleStatus, earnings, withdraw, updateProfile, uploadDocuments, updateProfilePhoto };
