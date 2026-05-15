@@ -7,6 +7,7 @@ const jobRoutes           = require('./routes/jobs');
 const driverRoutes        = require('./routes/driver');
 const notificationRoutes  = require('./routes/notifications');
 const adminRoutes         = require('./routes/admin');
+const paymentRoutes       = require('./routes/payments');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api/jobs',          jobRoutes);
 app.use('/api/driver',        driverRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin',         adminRoutes);
+app.use('/api/payments',      paymentRoutes);
 
 // 404
 app.use((req, res) => {

@@ -59,6 +59,7 @@ model DriverProfile {
   documentsSubmittedAt DateTime?
   isOnline          Boolean  @default(false)
   isApproved        Boolean  @default(false)
+  stripeAccountId   String?
   averageRating     Float    @default(0)
   totalJobs         Int      @default(0)
   totalEarnings     Float    @default(0)
@@ -98,6 +99,8 @@ model Job {
   urgency        String    @default("ASAP")
   scheduledAt    DateTime?
   status         String    @default("POSTED")
+  isPaid         Boolean   @default(false)
+  stripeCheckoutSessionId String?
   totalPrice     Float     @default(0)
   platformFee    Float     @default(0)
   driverEarnings Float     @default(0)
