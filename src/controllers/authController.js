@@ -198,6 +198,18 @@ async function uploadBusinessDocuments(req, res) {
   return res.json(profile);
 }
 
+async function updateBusinessPhoto(req, res) {
+  const { profilePhotoUrl } = req.body;
+  if (!profilePhotoUrl) return res.status(400).json({ error: 'profilePhotoUrl required' });
+
+  const profile = await prisma.businessProfile.update({
+    where: { userId: req.user.id },
+    data: { profilePhotoUrl },
+  });
+
+  return res.json(profile);
+}
+
 async function changePassword(req, res) {
   const { currentPassword, newPassword } = req.body;
 
@@ -220,4 +232,4 @@ async function changePassword(req, res) {
   return res.json({ ok: true });
 }
 
-module.exports = { register, login, me, savePushToken, updateProfile, updateBusiness, uploadBusinessDocuments, changePassword };
+module.exports = { register, login, me, savePushToken, updateProfile, updateBusiness, uploadBusinessDocuments, changePassword, updateBusinessPhoto };

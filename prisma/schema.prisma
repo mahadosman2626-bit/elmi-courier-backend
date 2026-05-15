@@ -71,6 +71,7 @@ model BusinessProfile {
   userId               String    @unique
   user                 User      @relation(fields: [userId], references: [id])
   businessName         String
+  profilePhotoUrl      String?
   isVerified           Boolean   @default(false)
   averageRating        Float     @default(0)
   totalJobs            Int       @default(0)
