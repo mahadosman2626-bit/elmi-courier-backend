@@ -128,4 +128,82 @@ async function verifyBusiness(req, res) {
   return res.json(profile);
 }
 
-module.exports = { listDrivers, verifyDriver, listBusinesses, verifyBusiness };
+// GET /api/admin/stats — platform-wide overview numbers
+async function getStats(req, res) {
+  const [
+    totalJobs,
+    deliveredJobs,
+    cancelledJobs,
+    activeJobs,
+    totalDrivers,
+    totalBusinesses,
+    pendingDrivers,
+    pendingBusinesses,
+    revenue,
+  ] = await Promise.all([
+    prisma.job.count(),
+    prisma.job.count({ where: { status: 'DELIVERED' } }),
+    prisma.job.count({ where: { status: 'CANCELLED' } }),
+    prisma.job.count({ where: { status: { in: ['POSTED', 'ACCEPTED', 'COLLECTING', 'IN_TRANSIT'] } } }),
+    prisma.user.count({ where: { role: 'DRIVER' } }),
+    prisma.user.count({ where: { role: 'BUSINESS' } }),
+    prisma.driverProfile.count({
+      where: { documentsSubmittedAt: { not: null }, isApproved: false },
+    }),
+    prisma.businessProfile.count({
+      where: { documentsSubmittedAt: { not: null }, isVerified: false },
+    }),
+    prisma.job.aggregate({
+      _sum: { totalPrice: true },
+      where: { status: 'DELIVERED' },
+    }),
+  ]);
+
+  return res.json({
+    totalJobs,
+    deliveredJobs,
+    cancelledJobs,
+    activeJobs,
+    totalDrivers,
+    totalBusinesses,
+    pendingVerifications: pendingDrivers + pendingBusinesses,
+    totalRevenue: revenue._sum.totalPrice || 0,
+  });
+}
+
+// GET /api/admin/jobs — every job on the platform
+async function listAllJobs(req, res) {
+  const jobs = await prisma.job.findMany({
+    include: {
+      business: {
+        select: {
+          id: true,
+          name: true,
+          businessProfile: { select: { businessName: true } },
+        },
+      },
+      driver: { select: { id: true, name: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return res.json(jobs);
+}
+
+// POST /api/admin/jobs/:jobId/cancel — admin force-cancels a job
+async function adminCancelJob(req, res) {
+  const job = await prisma.job.findUnique({ where: { id: req.params.jobId } });
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  if (['DELIVERED', 'CANCELLED'].includes(job.status)) {
+    return res.status(400).json({ error: 'Job is already finished or cancelled' });
+  }
+
+  const updated = await prisma.job.update({
+    where: { id: req.params.jobId },
+    data: { status: 'CANCELLED' },
+  });
+
+  return res.json(updated);
+}
+
+module.exports = { listDrivers, verifyDriver, listBusinesses, verifyBusiness, getStats, listAllJobs, adminCancelJob };
